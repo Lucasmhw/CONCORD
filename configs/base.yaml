@@ -1,0 +1,72 @@
+exp:
+  name: concord_default
+  seed: 42
+  device: cuda
+  output_dir: runs
+  num_workers: 4
+  save_every: 1
+
+data:
+  dataset_name: electricity
+  raw_path: data/raw/electricity/electricity.csv
+  processed_dir: data/processed/electricity
+  date_column: date
+  task: forecasting
+  lookback: 336
+  horizon: 96
+  stride: 1
+  split:
+    train: 0.7
+    val: 0.1
+    test: 0.2
+  scaler: standard
+  drop_last: false
+  sequence_length: 1024
+  mask_ratios: [0.125, 0.25, 0.375, 0.5]
+  imputation_fill: linear
+
+model:
+  d_model: 64
+  encoder_channels: [32, 64, 64]
+  kernel_size: 3
+  dropout: 0.1
+  scales: [48, 96, 192]
+  topk: 6
+  corr_window: null
+  kappa: 2.0
+  delta: 1.0
+  gamma: 0.4
+  mu: 0.15
+  num_basis: 16
+  spline_order: 3
+  grid_min: -3.0
+  grid_max: 3.0
+  use_multiscale: true
+  use_graph: true
+  use_kan: true
+  rollout_mode: concept
+
+loss:
+  lambda_con: 1.0
+  lambda_res: 0.3
+  lambda_x: 1.0
+  lambda_k: [1.0, 1.0, 1.0, 1.0, 1.0]
+  weight_decay: 1.0e-4
+
+optim:
+  optimizer: adamw
+  lr: 1.0e-3
+  betas: [0.9, 0.999]
+  eps: 1.0e-8
+  epochs: 20
+  batch_size: 32
+  grad_clip: 1.0
+  scheduler: cosine
+  warmup_epochs: 2
+
+metrics:
+  primary: mse
+  report: [mse, mae, rmse, mape]
+
+eval:
+  checkpoint: null

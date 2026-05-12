@@ -1,0 +1,15 @@
+include: configs/base.yaml
+
+data:
+  task: forecasting
+  lookback: 336
+  horizon: 96
+  stride: 1
+
+optim:
+  epochs: 30
+  batch_size: 32
+
+metrics:
+  primary: mse
+  report: [mse, mae, rmse]

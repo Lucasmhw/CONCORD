@@ -1,0 +1,18 @@
+include: configs/base.yaml
+
+data:
+  dataset_name: pems
+  raw_path: data/raw/pems/PEMS04.npz
+  processed_dir: data/processed/pems04
+  task: forecasting
+  lookback: 336
+  horizon: 12
+  stride: 1
+
+optim:
+  epochs: 25
+  batch_size: 16
+
+metrics:
+  primary: rmse
+  report: [mae, mape, rmse]

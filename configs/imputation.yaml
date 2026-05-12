@@ -1,0 +1,17 @@
+include: configs/base.yaml
+
+data:
+  task: imputation
+  sequence_length: 1024
+  lookback: 336
+  horizon: 1
+  stride: 32
+  mask_ratios: [0.125, 0.25, 0.375, 0.5]
+
+optim:
+  epochs: 15
+  batch_size: 8
+
+metrics:
+  primary: mse
+  report: [mse, mae]
