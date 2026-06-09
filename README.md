@@ -1,109 +1,102 @@
-# CONCORD: Reproducible Reference Codebase
+# CONCORD
 
-This repository contains a complete, modular PyTorch reference implementation of **CONCORD** (Concept-Oriented Graph-Coupled Dynamics for Forecasting), together with configuration files, preprocessing utilities, training/evaluation scripts, ablation toggles, and reproduction instructions.
+Reproducible PyTorch reference implementation of CONCORD, a concept-oriented graph-coupled dynamical forecaster for multivariate time series.
 
-The implementation follows the manuscript's core design:
-
-- explicit **multi-scale causal concept states**;
-- **correlation-induced graph coupling** in concept space;
-- **graph-coupled concept dynamics** and **graph-coupled observation dynamics**;
-- **residual-consistent learning** to keep rolled-out concepts equal to the causal statistics they claim to represent;
-- **KAN-parameterized** nonlinear maps.
-
-## Repository layout
+This repository is the manuscript-aligned implementation. In particular, the observation forcing term follows Eq. 15 exactly:
 
 ```text
-concord_repro/
-├── README.md
-├── requirements.txt
-├── pyproject.toml
-├── configs/
-│   ├── base.yaml
-│   ├── long_term.yaml
-│   ├── pems.yaml
-│   └── imputation.yaml
-├── scripts/
-│   ├── preprocess_all.sh
-│   ├── train_long_term.sh
-│   ├── train_pems.sh
-│   ├── train_imputation.sh
-│   └── evaluate.sh
-├── src/concord/
-│   ├── __init__.py
-│   ├── cli.py
-│   ├── config.py
-│   ├── losses.py
-│   ├── metrics.py
-│   ├── engine.py
-│   ├── data/
-│   │   ├── concepts.py
-│   │   ├── datasets.py
-│   │   ├── io.py
-│   │   ├── preprocess.py
-│   │   └── scalers.py
-│   ├── models/
-│   │   ├── encoder.py
-│   │   ├── graph.py
-│   │   ├── kan.py
-│   │   └── concord.py
-│   ├── training/
-│   │   ├── evaluate.py
-│   │   └── train.py
-│   └── utils/
-│       ├── checkpoint.py
-│       ├── logging.py
-│       └── seed.py
-└── tests/
-    ├── test_concepts.py
-    └── test_graph.py
+u_{t,i}^{(h)} = beta_0 + sum_{m,k} beta_{k,m} q_{k,m,t,i}^{(h)}
 ```
 
-## 1. Environment
+The released model therefore does not use a step embedding, a nonlinear `u_head`, an `innov_head`, an innovation penalty, or a physics warmup schedule. The learnable forcing coefficients are exposed as `CONCORDModel.forcing_coefficients()` and are also available through `ForwardOutput.beta`.
 
-Create a fresh environment and install dependencies:
+## Repository Layout
+
+```text
+configs/
+  base.yaml
+  long_term.yaml
+  pems.yaml
+  imputation.yaml
+  baselines/
+baselines/
+  README.md
+scripts/
+  aggregate_metrics.py
+  evaluate.sh
+  preprocess_all.sh
+  run_baseline.py
+  train_imputation.sh
+  train_long_term.sh
+  train_pems.sh
+src/
+  cli.py
+  config.py
+  engine.py
+  losses.py
+  metrics.py
+  data/
+  models/
+  training/
+  utils/
+tests/
+```
+
+## Environment
+
+Use Python 3.10 or newer.
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 pip install -e .
+python -m pytest -q
 ```
 
-## 2. Data layout
+On Windows PowerShell, activate with:
 
-Place raw data under:
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+## Data Layout
+
+Place raw data under `data/raw/`:
 
 ```text
-data/
-├── raw/
-│   ├── electricity/electricity.csv
-│   ├── traffic/traffic.csv
-│   ├── weather/weather.csv
-│   ├── illness/ili.csv
-│   ├── exchange/exchange_rate.csv
-│   ├── ett/ETTh1.csv
-│   ├── ett/ETTh2.csv
-│   ├── ett/ETTm1.csv
-│   ├── ett/ETTm2.csv
-│   ├── pems/PEMS03.npz
-│   ├── pems/PEMS04.npz
-│   ├── pems/PEMS07.npz
-│   └── pems/PEMS08.npz
-└── processed/
+data/raw/
+  electricity/electricity.csv
+  traffic/traffic.csv
+  weather/weather.csv
+  illness/ili.csv
+  exchange/exchange_rate.csv
+  solar/solar_energy_137_10min.csv
+  ett/ETTh1.csv
+  ett/ETTh2.csv
+  ett/ETTm1.csv
+  ett/ETTm2.csv
+  pems/PEMS03.npz
+  pems/PEMS04.npz
+  pems/PEMS07.npz
+  pems/PEMS08.npz
 ```
 
-For CSV files, all columns except an optional `date` column are treated as time-series channels.
-For NPZ files, the loader expects either `data` or `x` to be present.
+CSV loaders use every numeric column except an optional `date` column as a time-series channel. NPZ loaders expect `data` or `x`.
 
-## 3. Preprocessing
+If you use the mirrored root-level files in this repository, arrange them into the expected layout first:
 
-Preprocessing fits the scaler **only on the training split**, then serializes processed arrays and metadata for exact reuse.
+```bash
+python scripts/prepare_repo_data.py
+```
+
+Preprocessing always splits chronologically first and fits the scaler only on the training split:
 
 ```bash
 bash scripts/preprocess_all.sh
 ```
 
-Or run a single dataset:
+Single dataset example:
 
 ```bash
 python -m concord.cli preprocess --config configs/long_term.yaml \
@@ -112,115 +105,57 @@ python -m concord.cli preprocess --config configs/long_term.yaml \
   data.processed_dir=data/processed/electricity
 ```
 
-## 4. Reproducing the main long-term forecasting results
+## Main CONCORD Runs
 
-The manuscript uses the following defaults unless otherwise stated:
-
-- scales: `{48, 96, 192}`
-- graph top-K sparsity: `6`
-- correlation window: equal to the input look-back
-- residual-consistency weight: `0.3`
-- optimizer: `AdamW`
-
-Run a single long-term forecasting experiment:
-
-```bash
-python -m concord.cli train --config configs/long_term.yaml \
-  data.dataset_name=electricity \
-  data.processed_dir=data/processed/electricity \
-  exp.name=concord_electricity
-```
-
-To reproduce the averaged long-horizon setting across prediction lengths `{96, 192, 336, 720}`:
+Long-term forecasting:
 
 ```bash
 bash scripts/train_long_term.sh
 ```
 
-This script launches four runs per dataset and writes metrics to `runs/<exp_name>/metrics.json`.
-
-## 5. Reproducing PEMS short-term traffic forecasting
+PEMS forecasting:
 
 ```bash
 bash scripts/train_pems.sh
 ```
 
-## 6. Reproducing the imputation setting
-
-The imputation pipeline uses sequence length `1024` and averages over masking ratios `{0.125, 0.25, 0.375, 0.5}`.
+Imputation:
 
 ```bash
 bash scripts/train_imputation.sh
 ```
 
-## 7. Evaluation
-
-Evaluate a saved checkpoint:
-
-```bash
-python -m concord.cli evaluate --config configs/long_term.yaml \
-  exp.name=concord_electricity \
-  eval.checkpoint=runs/concord_electricity/checkpoints/best.pt
-```
-
-Or aggregate all experiment folders:
+Evaluate saved checkpoints and aggregate metrics:
 
 ```bash
 bash scripts/evaluate.sh
 ```
 
-## 8. Ablations
+Each run writes `config.resolved.json`, per-epoch logs, checkpoints, and `metrics.json` under `runs/<exp.name>/`.
 
-The codebase exposes the main ablations via config switches:
+## Key Implementation Details
 
-- `model.use_multiscale=false`
-- `model.use_graph=false`
-- `loss.lambda_res=0.0`
-- `model.use_kan=false`
-- `loss.lambda_con=0.0`
-- `model.rollout_mode=latent`
+- Concepts: level, velocity, instantaneous power, first-harmonic amplitude, and local volatility at each configured scale.
+- Default scales: `[48, 96, 192]`.
+- Encoder: shared series-local causal convolutional encoder followed by a KAN projection.
+- KAN: cubic B-spline basis with `num_basis=16`, `grid_min=-3.0`, and `grid_max=3.0`.
+- Graph: causal correlation window `model.corr_window=96`, top-K sparsity `model.topk=6`, symmetric normalized adjacency, and Laplacian `L = I - A`.
+- Dynamics: graph-coupled concept rollout and linear beta forcing for observation rollout.
+- Loss: prediction loss + initial concept alignment + residual consistency. No innovation loss or warmup coefficient is used.
+- Optimizer: AdamW with cosine schedule and `warmup_epochs=2`.
+- Imputation masks: deterministic per sample using `data.mask_seed`.
 
-Example:
+## Baseline Protocol
 
-```bash
-python -m concord.cli train --config configs/long_term.yaml \
-  model.use_graph=false \
-  exp.name=ablation_no_graph
-```
-
-## 9. Notes on exact reproducibility
-
-1. Set a fixed seed (`exp.seed`) for each run.
-2. Keep the processed artifacts and scaler files under versioned paths.
-3. Use the same split boundaries for all baselines and CONCORD.
-4. For ETT average reporting, average metrics across the ETT subsets you evaluate.
-5. For imputation, average final results over the four masking ratios.
-6. Record the exact config YAML copied into each run folder.
-
-## 10. Practical interpretation of the code
-
-The implementation intentionally mirrors the paper’s semantic structure:
-
-- `concord.data.concepts` implements the five causal descriptors;
-- `concord.models.graph` implements correlation-induced graph construction;
-- `concord.models.concord.CONCORDModel` implements concept inference, graph refinement, concept rollout, observation rollout, and residual consistency hooks;
-- `concord.losses` contains prediction, concept-alignment, and residual-consistency losses;
-- `configs/*.yaml` expose all hyperparameters needed to reproduce the reported settings.
-
-## 11. Recommended workflow
-
-1. Preprocess each dataset.
-2. Reproduce the main model with default settings.
-3. Reproduce the ablations by changing one switch at a time.
-4. Reproduce sensitivity runs for `num_scales`, `topk`, and `lambda_res`.
-5. Use the saved JSON metrics to build the paper tables.
-
-## 12. Minimal command set
+Baseline configs for iTransformer and TimeMixer++ style runs are recorded under `configs/baselines/`. Clone official baseline repositories under `external/`, inspect commands with `--dry-run`, and then execute:
 
 ```bash
-bash scripts/preprocess_all.sh
-bash scripts/train_long_term.sh
-bash scripts/train_pems.sh
-bash scripts/train_imputation.sh
-bash scripts/evaluate.sh
+python scripts/run_baseline.py --config configs/baselines/itransformer_long_term.yaml --dry-run
+python scripts/run_baseline.py --config configs/baselines/timemixerpp_long_term.yaml --dry-run
 ```
+
+The runner stores the exact command lines in `runs/baselines/<baseline>/commands.json`.
+
+## Reproducibility Checklist
+
+See `REPRODUCTION.md` for the full checklist covering environment, data preparation, splits, hyperparameters, imputation masks, baseline commands, and reporting.

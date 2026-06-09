@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import json
 from pathlib import Path
 from typing import Any
 
@@ -19,7 +20,7 @@ def _deep_update(base: dict[str, Any], update: dict[str, Any]) -> dict[str, Any]
 def load_config(path: str | Path) -> dict[str, Any]:
     path = Path(path)
     with path.open("r", encoding="utf-8") as f:
-        cfg = yaml.safe_load(f)
+        cfg = json.load(f) if path.suffix.lower() == ".json" else yaml.safe_load(f)
     include = cfg.pop("include", None)
     if include is None:
         return cfg

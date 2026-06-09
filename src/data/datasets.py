@@ -35,11 +35,12 @@ class ForecastingDataset(Dataset):
 
 
 class ImputationDataset(Dataset):
-    def __init__(self, array: np.ndarray, seq_len: int, stride: int, mask_ratios: Iterable[float]) -> None:
+    def __init__(self, array: np.ndarray, seq_len: int, stride: int, mask_ratios: Iterable[float], seed: int = 0) -> None:
         self.x = torch.from_numpy(array).float()
         self.seq_len = seq_len
         self.stride = stride
         self.mask_ratios = list(mask_ratios)
+        self.seed = int(seed)
         self.indices = list(range(0, len(self.x) - seq_len + 1, stride))
 
     def __len__(self) -> int:
@@ -49,7 +50,8 @@ class ImputationDataset(Dataset):
         start = self.indices[idx]
         seq = self.x[start:start + self.seq_len]
         ratio = self.mask_ratios[idx % len(self.mask_ratios)]
-        mask = (torch.rand_like(seq) > ratio).float()
+        generator = torch.Generator(device=seq.device).manual_seed(self.seed + idx)
+        mask = (torch.rand(seq.shape, generator=generator, device=seq.device, dtype=seq.dtype) > ratio).float()
         observed = seq * mask
         return {"sequence": seq, "observed": observed, "mask": mask, "ratio": torch.tensor(ratio)}
 

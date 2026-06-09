@@ -3,7 +3,7 @@ exp:
   seed: 42
   device: cuda
   output_dir: runs
-  num_workers: 4
+  num_workers: 0
   save_every: 1
 
 data:
@@ -23,6 +23,7 @@ data:
   drop_last: false
   sequence_length: 1024
   mask_ratios: [0.125, 0.25, 0.375, 0.5]
+  mask_seed: 42
   imputation_fill: linear
 
 model:
@@ -32,7 +33,7 @@ model:
   dropout: 0.1
   scales: [48, 96, 192]
   topk: 6
-  corr_window: null
+  corr_window: 96
   kappa: 2.0
   delta: 1.0
   gamma: 0.4

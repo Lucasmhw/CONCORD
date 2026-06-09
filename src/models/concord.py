@@ -19,6 +19,8 @@ class ForwardOutput:
     q0: torch.Tensor
     q_states: list[torch.Tensor]
     x_states: list[torch.Tensor]
+    u_states: list[torch.Tensor]
+    ell_states: list[torch.Tensor]
     adj: torch.Tensor
     lap: torch.Tensor
     q_target: torch.Tensor
@@ -43,6 +45,8 @@ class CONCORDModel(nn.Module):
         self.mu = float(mcfg["mu"])
         self.topk = int(mcfg["topk"])
         self.kappa = float(mcfg["kappa"])
+        corr_window = mcfg.get("corr_window")
+        self.corr_window = None if corr_window is None else int(corr_window)
         self.use_graph = bool(mcfg.get("use_graph", True))
         self.rollout_mode = str(mcfg.get("rollout_mode", "concept"))
 
@@ -77,7 +81,7 @@ class CONCORDModel(nn.Module):
         self.register_parameter("alpha_logits", nn.Parameter(torch.zeros(len(self.scales))))
 
     def _graph(self, x_hist: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        w = x_hist.shape[1]
+        w = x_hist.shape[1] if self.corr_window is None else min(self.corr_window, x_hist.shape[1])
         adj, lap = build_correlation_graph(x_hist[:, -w:, :], self.topk, self.kappa)
         if not self.use_graph:
             b, _, n = x_hist.shape
@@ -98,6 +102,10 @@ class CONCORDModel(nn.Module):
     def _forcing(self, q: torch.Tensor) -> torch.Tensor:
         return self.beta0 + torch.einsum("bnc,c->bn", q, self.beta)
 
+    def forcing_coefficients(self) -> torch.Tensor:
+        """Return beta coefficients as [num_scales, 5] for direct interpretation."""
+        return self.beta.detach().view(len(self.scales), 5)
+
     def forward(self, x_hist: torch.Tensor, horizon: int | None = None) -> ForwardOutput:
         # x_hist: [B, L, N]
         horizon = int(horizon or 1)
@@ -112,6 +120,8 @@ class CONCORDModel(nn.Module):
         q_curr = q0
         q_states = [q_curr]
         x_states = [x_curr]
+        u_states = []
+        ell_states = []
         latent = h0
 
         for _ in range(horizon):
@@ -123,6 +133,8 @@ class CONCORDModel(nn.Module):
                 q_next = q_curr + self.delta * self.omega(torch.cat([q_curr, msg, x_curr.unsqueeze(-1)], dim=-1))
             ell = self._level_reference(q_curr)
             u = self._forcing(q_curr)
+            u_states.append(u)
+            ell_states.append(ell)
             x_next = x_curr + self.delta * (u - self.gamma * (x_curr - ell) - self.mu * torch.einsum("bij,bj->bi", lap, x_curr))
             q_curr = q_next
             x_curr = x_next
@@ -135,6 +147,8 @@ class CONCORDModel(nn.Module):
             q0=q0,
             q_states=q_states,
             x_states=x_states,
+            u_states=u_states,
+            ell_states=ell_states,
             adj=adj,
             lap=lap,
             q_target=q_target,

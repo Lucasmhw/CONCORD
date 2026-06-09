@@ -21,7 +21,8 @@ def evaluate_main(cfg: dict) -> dict:
     model.load_state_dict(ckpt["model_state"])
 
     if cfg["data"].get("task", "forecasting") == "imputation":
-        test = ImputationDataset(load_processed_split(cfg["data"]["processed_dir"], "test"), seq_len=int(cfg["data"]["sequence_length"]), stride=int(cfg["data"].get("stride", 32)), mask_ratios=cfg["data"]["mask_ratios"])
+        mask_seed = int(cfg["data"].get("mask_seed", cfg["exp"].get("seed", 0))) + 20_000
+        test = ImputationDataset(load_processed_split(cfg["data"]["processed_dir"], "test"), seq_len=int(cfg["data"]["sequence_length"]), stride=int(cfg["data"].get("stride", 32)), mask_ratios=cfg["data"]["mask_ratios"], seed=mask_seed)
     else:
         spec = WindowSpec(lookback=int(cfg["data"]["lookback"]), horizon=int(cfg["data"]["horizon"]), stride=int(cfg["data"].get("stride", 1)))
         test = ForecastingDataset(load_processed_split(cfg["data"]["processed_dir"], "test"), spec)

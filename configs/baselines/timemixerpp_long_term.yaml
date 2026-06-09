@@ -1,0 +1,33 @@
+baseline:
+  name: TimeMixerPP
+  repo_dir: external/TimeMixer
+  entrypoint: run.py
+  python: python
+
+output_dir: runs/baselines
+
+arguments:
+  task_name: long_term_forecast
+  is_training: 1
+  model: TimeMixer
+  data: custom
+  root_path: data/raw/electricity
+  data_path: electricity.csv
+  features: M
+  seq_len: 336
+  label_len: 48
+  pred_len: 96
+  e_layers: 2
+  d_model: 512
+  d_ff: 2048
+  dropout: 0.1
+  down_sampling_layers: 3
+  down_sampling_window: 2
+  train_epochs: 10
+  batch_size: 32
+  learning_rate: 0.0005
+  patience: 3
+  itr: 1
+
+sweeps:
+  pred_len: [96, 192, 336, 720]

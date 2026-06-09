@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import random
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
@@ -17,10 +19,12 @@ from concord.utils.seed import set_seed
 def build_dataloaders(cfg: dict[str, Any]) -> tuple[DataLoader, DataLoader, DataLoader]:
     processed_dir = cfg["data"]["processed_dir"]
     task = cfg["data"].get("task", "forecasting")
+    seed = int(cfg["exp"]["seed"])
     if task == "imputation":
-        train = ImputationDataset(load_processed_split(processed_dir, "train"), seq_len=int(cfg["data"]["sequence_length"]), stride=int(cfg["data"].get("stride", 32)), mask_ratios=cfg["data"]["mask_ratios"])
-        val = ImputationDataset(load_processed_split(processed_dir, "val"), seq_len=int(cfg["data"]["sequence_length"]), stride=int(cfg["data"].get("stride", 32)), mask_ratios=cfg["data"]["mask_ratios"])
-        test = ImputationDataset(load_processed_split(processed_dir, "test"), seq_len=int(cfg["data"]["sequence_length"]), stride=int(cfg["data"].get("stride", 32)), mask_ratios=cfg["data"]["mask_ratios"])
+        mask_seed = int(cfg["data"].get("mask_seed", seed))
+        train = ImputationDataset(load_processed_split(processed_dir, "train"), seq_len=int(cfg["data"]["sequence_length"]), stride=int(cfg["data"].get("stride", 32)), mask_ratios=cfg["data"]["mask_ratios"], seed=mask_seed)
+        val = ImputationDataset(load_processed_split(processed_dir, "val"), seq_len=int(cfg["data"]["sequence_length"]), stride=int(cfg["data"].get("stride", 32)), mask_ratios=cfg["data"]["mask_ratios"], seed=mask_seed + 10_000)
+        test = ImputationDataset(load_processed_split(processed_dir, "test"), seq_len=int(cfg["data"]["sequence_length"]), stride=int(cfg["data"].get("stride", 32)), mask_ratios=cfg["data"]["mask_ratios"], seed=mask_seed + 20_000)
     else:
         spec = WindowSpec(
             lookback=int(cfg["data"]["lookback"]),
@@ -32,9 +36,17 @@ def build_dataloaders(cfg: dict[str, Any]) -> tuple[DataLoader, DataLoader, Data
         test = ForecastingDataset(load_processed_split(processed_dir, "test"), spec)
     bs = int(cfg["optim"]["batch_size"])
     nw = int(cfg["exp"].get("num_workers", 0))
-    train_loader = DataLoader(train, batch_size=bs, shuffle=True, num_workers=nw)
-    val_loader = DataLoader(val, batch_size=bs, shuffle=False, num_workers=nw)
-    test_loader = DataLoader(test, batch_size=bs, shuffle=False, num_workers=nw)
+    generator = torch.Generator().manual_seed(seed)
+
+    def seed_worker(worker_id: int) -> None:
+        worker_seed = seed + worker_id
+        random.seed(worker_seed)
+        np.random.seed(worker_seed)
+        torch.manual_seed(worker_seed)
+
+    train_loader = DataLoader(train, batch_size=bs, shuffle=True, num_workers=nw, drop_last=bool(cfg["data"].get("drop_last", False)), generator=generator, worker_init_fn=seed_worker)
+    val_loader = DataLoader(val, batch_size=bs, shuffle=False, num_workers=nw, worker_init_fn=seed_worker)
+    test_loader = DataLoader(test, batch_size=bs, shuffle=False, num_workers=nw, worker_init_fn=seed_worker)
     return train_loader, val_loader, test_loader
 
 
@@ -46,6 +58,21 @@ def build_optimizer(model: torch.nn.Module, cfg: dict[str, Any]) -> torch.optim.
         eps=float(cfg["optim"]["eps"]),
         weight_decay=float(cfg["loss"]["weight_decay"]),
     )
+
+
+def build_scheduler(optimizer: torch.optim.Optimizer, cfg: dict[str, Any]) -> torch.optim.lr_scheduler.LRScheduler | None:
+    name = str(cfg["optim"].get("scheduler", "none")).lower()
+    epochs = int(cfg["optim"]["epochs"])
+    warmup = int(cfg["optim"].get("warmup_epochs", 0))
+    if name in {"none", "null", ""}:
+        return None
+    if name != "cosine":
+        raise ValueError(f"Unsupported scheduler: {name}")
+    if warmup <= 0:
+        return torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=max(epochs, 1))
+    warmup_sched = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1e-3, total_iters=warmup)
+    cosine_sched = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=max(epochs - warmup, 1))
+    return torch.optim.lr_scheduler.SequentialLR(optimizer, schedulers=[warmup_sched, cosine_sched], milestones=[warmup])
 
 
 def train_main(cfg: dict[str, Any]) -> dict[str, Any]:
@@ -62,6 +89,7 @@ def train_main(cfg: dict[str, Any]) -> dict[str, Any]:
     train_loader, val_loader, test_loader = build_dataloaders(cfg)
     model = CONCORDModel(cfg).to(device)
     optimizer = build_optimizer(model, cfg)
+    scheduler = build_scheduler(optimizer, cfg)
 
     best_val = float("inf")
     best_metrics: dict[str, Any] = {}
@@ -74,6 +102,7 @@ def train_main(cfg: dict[str, Any]) -> dict[str, Any]:
             "val_loss": val_res.loss,
             "train_metrics": train_res.metrics,
             "val_metrics": val_res.metrics,
+            "lr": optimizer.param_groups[0]["lr"],
         }
         dump_json(record, run_dir / f"epoch_{epoch:03d}.json")
         primary = cfg["metrics"]["primary"]
@@ -92,4 +121,6 @@ def train_main(cfg: dict[str, Any]) -> dict[str, Any]:
                 "test": test_res.metrics,
             }
             dump_json(best_metrics, run_dir / "metrics.json")
+        if scheduler is not None:
+            scheduler.step()
     return best_metrics
