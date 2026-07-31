@@ -288,27 +288,6 @@ python scripts/run_baseline.py \
 See `baselines/README.md` for the provenance boundary between published values and
 optional local reruns.
 
-## Default Configuration
-
-The current Methods-aligned defaults are defined in `configs/base.yaml`:
-
-| Component | Default |
-|---|---|
-| Lookback / scales | 336 / `[48, 96, 192]` |
-| Encoder | 3 pre-norm causal layers, 4 heads, `d_model=64`, `d_ff=128` |
-| KAN | 9 fixed hat-basis knots on `[-1, 1]` |
-| Graph | absolute correlation, top-K 6, symmetric normalized adjacency |
-| Step embedding | 32 dimensions |
-| Rollout | graph-refined concept-state specialization, `delta=0.5` |
-| Dynamics | learnable positive `gamma` and `mu`, initialized near 0.05 |
-| Optimizer | AdamW, fixed learning rate `1e-3`, weight decay `1e-4` |
-| Training | 20 epochs, long-term effective batch size 16, validation patience 5 |
-| Objective weights | concept 0.1, relation 0.01, residual 0.3 |
-| Stabilizers | 500-step residual warm-up, innovation and flat penalties `1e-3` |
-
-The exact configuration used by a run is always stored in
-`runs/<run>/config.resolved.json`; that file, rather than this table, is the
-authoritative record for reported results.
 
 ## Leakage Controls
 
