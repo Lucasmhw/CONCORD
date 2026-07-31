@@ -4,16 +4,8 @@ from typing import Any
 
 import torch
 
-from concord.data.concepts import compute_rollout_concepts
+from concord.data.concepts import compute_concept_trajectory
 from concord.metrics import mse
-
-
-def prediction_loss(pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-    return mse(pred, target)
-
-
-def concept_alignment_loss(q_hat: torch.Tensor, q_target: torch.Tensor) -> torch.Tensor:
-    return ((q_hat - q_target) ** 2).mean()
 
 
 def _active_scales(cfg: dict[str, Any]) -> list[int]:
@@ -23,46 +15,78 @@ def _active_scales(cfg: dict[str, Any]) -> list[int]:
     return [scales[len(scales) // 2]]
 
 
-def residual_consistency_loss(output: Any, x_hist: torch.Tensor, cfg: dict[str, Any]) -> torch.Tensor:
-    scales = _active_scales(cfg)
-    lambda_x = float(cfg["loss"].get("lambda_x", 1.0))
-    lambda_k = list(cfg["loss"].get("lambda_k", [1.0] * 5))
-    pred = output.pred
-    q_states = output.q_states
-    x_states = output.x_states
-    total = x_hist.new_tensor(0.0)
-    horizon = pred.shape[1]
-
-    alpha = torch.softmax(output.alpha_logits[: len(scales)], dim=0)
-    level_indices = [5 * i for i in range(len(scales))]
-
-    for h in range(horizon):
-        q_expected = compute_rollout_concepts(x_hist, pred, h, scales)
-        q_curr = q_states[h]
-        for k in range(5):
-            total = total + float(lambda_k[k]) * ((q_curr[..., k::5] - q_expected[..., k::5]) ** 2).mean()
-
-        x_curr = x_states[h]
-        x_next = x_states[h + 1]
-        levels = torch.stack([q_curr[..., idx] for idx in level_indices], dim=-1)
-        ell = torch.einsum("bns,s->bn", levels, alpha)
-        u = output.beta0 + torch.einsum("bnc,c->bn", q_curr, output.beta)
-        x_rhs = x_curr + output.delta * (u - output.gamma * (x_curr - ell) - output.mu * torch.einsum("bij,bj->bi", output.lap, x_curr))
-        total = total + lambda_x * ((x_next - x_rhs) ** 2).mean()
-    return total / max(horizon, 1)
+def residual_warmup_weight(global_step: int, warmup_steps: int, target: float) -> float:
+    if warmup_steps <= 0:
+        return float(target)
+    fraction = min(max(global_step / warmup_steps, 0.0), 1.0)
+    return float(target) * fraction
 
 
-def total_loss(output: Any, batch: dict[str, torch.Tensor], cfg: dict[str, Any]) -> tuple[torch.Tensor, dict[str, float]]:
-    pred = output.pred
-    y = batch["y"]
-    pred_loss = prediction_loss(pred, y)
-    con_loss = concept_alignment_loss(output.q_hat, output.q_target)
-    res_loss = residual_consistency_loss(output, batch["x_hist"], cfg)
-    total = pred_loss + float(cfg["loss"]["lambda_con"]) * con_loss + float(cfg["loss"]["lambda_res"]) * res_loss
+def concept_residual_loss(output: Any, x_hist: torch.Tensor, cfg: dict[str, Any]) -> torch.Tensor:
+    expected = compute_concept_trajectory(x_hist, output.pred, _active_scales(cfg))
+    actual = torch.stack(output.q_states[:-1], dim=1)
+    weights = x_hist.new_tensor(cfg["loss"].get("lambda_k", [1.0] * 5))
+    num_scales = len(_active_scales(cfg))
+    squared = (actual - expected).square().view(*actual.shape[:-1], num_scales, 5)
+    return (squared * weights).mean()
+
+
+def observation_residual_loss(output: Any, x_hist: torch.Tensor) -> torch.Tensor:
+    """Match the first rollout vector field to the last causal observed increment."""
+    x_previous = x_hist[:, -2]
+    x_current = x_hist[:, -1]
+    observed_derivative = (x_current - x_previous) / output.delta
+    laplacian = torch.einsum("bij,bj->bi", output.lap, x_current)
+    predicted_derivative = (
+        output.u_states[0]
+        - output.gamma * (x_current - output.ell_states[0])
+        - output.mu * laplacian
+        + output.innov_states[0]
+    )
+    return (observed_derivative - predicted_derivative).square().mean()
+
+
+def total_loss(
+    output: Any,
+    batch: dict[str, torch.Tensor],
+    cfg: dict[str, Any],
+    global_step: int = 0,
+) -> tuple[torch.Tensor, dict[str, float]]:
+    pred_loss = mse(output.pred, batch["y"])
+    concept_loss = mse(output.q_hat, output.q_target)
+    relation_loss = mse(output.q0, output.q_hat)
+    concept_residual = concept_residual_loss(output, batch["x_hist"], cfg)
+    observation_residual = observation_residual_loss(output, batch["x_hist"])
+    residual_loss = concept_residual + float(cfg["loss"].get("lambda_x", 1.0)) * observation_residual
+    innovation_loss = torch.stack(output.innov_states, dim=1).square().mean()
+    prediction_std = output.pred.std(dim=1, unbiased=False)
+    flat_loss = torch.relu(float(cfg["loss"].get("flat_std_floor", 0.02)) - prediction_std).mean()
+
+    residual_weight = residual_warmup_weight(
+        global_step=global_step,
+        warmup_steps=int(cfg["loss"].get("residual_warmup_steps", 500)),
+        target=float(cfg["loss"].get("lambda_res", 0.3)),
+    )
+    total = (
+        pred_loss
+        + float(cfg["loss"].get("lambda_con", 0.1)) * concept_loss
+        + float(cfg["loss"].get("lambda_rel", 0.01)) * relation_loss
+        + residual_weight * residual_loss
+        + float(cfg["loss"].get("lambda_innov", 1e-3)) * innovation_loss
+        + float(cfg["loss"].get("lambda_flat", 1e-3)) * flat_loss
+    )
     stats = {
         "loss": float(total.detach().cpu()),
         "pred_loss": float(pred_loss.detach().cpu()),
-        "con_loss": float(con_loss.detach().cpu()),
-        "res_loss": float(res_loss.detach().cpu()),
+        "concept_loss": float(concept_loss.detach().cpu()),
+        "relation_loss": float(relation_loss.detach().cpu()),
+        "residual_loss": float(residual_loss.detach().cpu()),
+        "concept_residual": float(concept_residual.detach().cpu()),
+        "observation_residual": float(observation_residual.detach().cpu()),
+        "innovation_loss": float(innovation_loss.detach().cpu()),
+        "flat_loss": float(flat_loss.detach().cpu()),
+        "lambda_res_effective": residual_weight,
+        "gamma": float(output.gamma.detach().cpu()),
+        "mu": float(output.mu.detach().cpu()),
     }
     return total, stats

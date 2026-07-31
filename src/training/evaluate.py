@@ -2,33 +2,46 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import numpy as np
 import torch
 
-from concord.data.datasets import ForecastingDataset, ImputationDataset, WindowSpec, load_processed_split
 from concord.engine import run_epoch
 from concord.models.concord import CONCORDModel
+from concord.training.train import build_dataloaders
 from concord.utils.checkpoint import load_checkpoint
 from concord.utils.logging import dump_json
+from concord.utils.seed import set_seed
 
 
 def evaluate_main(cfg: dict) -> dict:
-    device_name = cfg["exp"].get("device", "cuda")
-    if device_name == "cuda" and not torch.cuda.is_available():
-        device_name = "cpu"
-    device = torch.device(device_name)
-    ckpt = load_checkpoint(cfg["eval"]["checkpoint"], map_location=device_name)
+    set_seed(
+        int(cfg["exp"]["seed"]),
+        deterministic=bool(cfg["exp"].get("deterministic", True)),
+    )
+    requested_device = str(cfg["exp"].get("device", "cuda"))
+    device = torch.device(
+        requested_device if requested_device != "cuda" or torch.cuda.is_available() else "cpu"
+    )
+    checkpoint = load_checkpoint(cfg["eval"]["checkpoint"], map_location=str(device))
     model = CONCORDModel(cfg).to(device)
-    model.load_state_dict(ckpt["model_state"])
-
-    if cfg["data"].get("task", "forecasting") == "imputation":
-        mask_seed = int(cfg["data"].get("mask_seed", cfg["exp"].get("seed", 0))) + 20_000
-        test = ImputationDataset(load_processed_split(cfg["data"]["processed_dir"], "test"), seq_len=int(cfg["data"]["sequence_length"]), stride=int(cfg["data"].get("stride", 32)), mask_ratios=cfg["data"]["mask_ratios"], seed=mask_seed)
-    else:
-        spec = WindowSpec(lookback=int(cfg["data"]["lookback"]), horizon=int(cfg["data"]["horizon"]), stride=int(cfg["data"].get("stride", 1)))
-        test = ForecastingDataset(load_processed_split(cfg["data"]["processed_dir"], "test"), spec)
-    loader = torch.utils.data.DataLoader(test, batch_size=int(cfg["optim"]["batch_size"]), shuffle=False)
-    res = run_epoch(model, loader, None, cfg, device, training=False)
-    metrics = {"loss": res.loss, **res.metrics}
-    out_path = Path(cfg["exp"]["output_dir"]) / cfg["exp"]["name"] / "eval_metrics.json"
-    dump_json(metrics, out_path)
+    model.load_state_dict(checkpoint["model_state"])
+    _, _, test_loader = build_dataloaders(cfg)
+    stats = np.load(Path(cfg["data"]["processed_dir"]) / "scaler_stats.npz")
+    scaler = (
+        torch.from_numpy(stats["mean"]).float().to(device),
+        torch.from_numpy(stats["std"]).float().to(device),
+    )
+    result = run_epoch(
+        model,
+        test_loader,
+        None,
+        cfg,
+        device,
+        training=False,
+        global_step=int(checkpoint.get("global_step", 0)),
+        scaler=scaler,
+    )
+    metrics = {"loss": result.loss, **result.metrics}
+    output_path = Path(cfg["exp"]["output_dir"]) / cfg["exp"]["name"] / "eval_metrics.json"
+    dump_json(metrics, output_path)
     return metrics

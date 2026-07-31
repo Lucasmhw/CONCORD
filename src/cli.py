@@ -13,9 +13,9 @@ def main() -> None:
     parser.add_argument("command", choices=["preprocess", "train", "evaluate"])
     parser.add_argument("--config", required=True)
     parser.add_argument("overrides", nargs="*")
-    args = parser.parse_args()
+    args, extra_overrides = parser.parse_known_args()
 
-    cfg = apply_overrides(load_config(args.config), args.overrides)
+    cfg = apply_overrides(load_config(args.config), [*args.overrides, *extra_overrides])
 
     if args.command == "preprocess":
         path = preprocess_dataset(cfg)

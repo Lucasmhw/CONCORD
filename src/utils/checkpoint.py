@@ -13,4 +13,4 @@ def save_checkpoint(path: str | Path, state: dict[str, Any]) -> None:
 
 
 def load_checkpoint(path: str | Path, map_location: str = "cpu") -> dict[str, Any]:
-    return torch.load(Path(path), map_location=map_location)
+    return torch.load(Path(path), map_location=map_location, weights_only=False)

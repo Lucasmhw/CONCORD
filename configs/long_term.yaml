@@ -7,9 +7,12 @@ data:
   stride: 1
 
 optim:
-  epochs: 30
-  batch_size: 32
+  epochs: 20
+  batch_size: 4
+  accumulation_steps: 4
+  early_stopping_patience: 5
 
 metrics:
   primary: mse
   report: [mse, mae, rmse]
+  scale: normalized

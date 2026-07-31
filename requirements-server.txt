@@ -1,0 +1,13 @@
+# Reference environment used for the audited GPU runs.
+# Install the CUDA wheel first:
+# pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu128
+torch==2.8.0
+numpy==2.3.2
+pandas==3.0.5
+scipy==1.18.0
+scikit-learn==1.9.0
+pyyaml==6.0.2
+tqdm==4.66.2
+einops==0.8.2
+matplotlib==3.10.5
+pytest==9.1.1

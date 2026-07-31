@@ -5,13 +5,19 @@ data:
   sequence_length: 1024
   lookback: 336
   horizon: 1
-  stride: 32
+  stride: 128
   mask_ratios: [0.125, 0.25, 0.375, 0.5]
+  imputation_train_origins: 8
+  imputation_train_origin_batch_size: 2
+  imputation_eval_origin_batch_size: 16
 
 optim:
   epochs: 15
-  batch_size: 8
+  batch_size: 1
+  accumulation_steps: 4
+  early_stopping_patience: 4
 
 metrics:
   primary: mse
   report: [mse, mae]
+  scale: normalized

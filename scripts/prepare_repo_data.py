@@ -13,8 +13,8 @@ CSV_MAP = {
     "ETTm1.csv": "data/raw/ett/ETTm1.csv",
     "ETTm2.csv": "data/raw/ett/ETTm2.csv",
     "exchange_rate.csv": "data/raw/exchange/exchange_rate.csv",
-    "national_illness.csv": "data/raw/illness/ili.csv",
-    "solar_energy_137_10min.csv": "data/raw/solar/solar_energy_137_10min.csv",
+    "national_illness.csv": "data/raw/illness/national_illness.csv",
+    "solar_energy_137_10min.csv": "data/raw/solar/solar_AL.txt",
     "weather.csv": "data/raw/weather/weather.csv",
 }
 
@@ -41,6 +41,11 @@ def extract_if_present(src_name: str, dst_name: str) -> None:
     dst = ROOT / dst_name
     dst.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(src) as zf:
+        destination = dst.resolve()
+        for member in zf.infolist():
+            target = (dst / member.filename).resolve()
+            if not target.is_relative_to(destination):
+                raise ValueError(f"Unsafe path in {src_name}: {member.filename}")
         zf.extractall(dst)
     print(f"extracted {src_name} -> {dst_name}")
 

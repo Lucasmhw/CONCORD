@@ -3,14 +3,18 @@ exp:
   seed: 42
   device: cuda
   output_dir: runs
-  num_workers: 0
+  num_workers: 4
+  pin_memory: true
+  progress: true
   save_every: 1
+  deterministic: true
 
 data:
   dataset_name: electricity
   raw_path: data/raw/electricity/electricity.csv
   processed_dir: data/processed/electricity
   date_column: date
+  expected_channels: null
   task: forecasting
   lookback: 336
   horizon: 96
@@ -24,34 +28,45 @@ data:
   sequence_length: 1024
   mask_ratios: [0.125, 0.25, 0.375, 0.5]
   mask_seed: 42
-  imputation_fill: linear
+  imputation_fill: causal_forward
 
 model:
   d_model: 64
-  encoder_channels: [32, 64, 64]
-  kernel_size: 3
+  num_heads: 4
+  num_layers: 3
+  d_ff: 128
   dropout: 0.1
   scales: [48, 96, 192]
   topk: 6
-  corr_window: 96
-  kappa: 2.0
-  delta: 1.0
-  gamma: 0.4
-  mu: 0.15
-  num_basis: 16
-  spline_order: 3
-  grid_min: -3.0
-  grid_max: 3.0
+  corr_window: null
+  kappa: 5.0
+  delta: 0.5
+  gamma_init: 0.05
+  mu_init: 0.05
+  step_emb_dim: 32
+  step_emb_init_std: 1.0
+  max_horizon: 720
+  max_lookback: 1024
+  series_chunk_size: 256
+  norm_style: pre
+  num_knots: 9
+  grid_min: -1.0
+  grid_max: 1.0
   use_multiscale: true
   use_graph: true
   use_kan: true
-  rollout_mode: concept
+  rollout_mode: specialized
 
 loss:
-  lambda_con: 1.0
+  lambda_con: 0.1
+  lambda_rel: 0.01
   lambda_res: 0.3
   lambda_x: 1.0
   lambda_k: [1.0, 1.0, 1.0, 1.0, 1.0]
+  residual_warmup_steps: 500
+  lambda_innov: 1.0e-3
+  lambda_flat: 1.0e-3
+  flat_std_floor: 0.02
   weight_decay: 1.0e-4
 
 optim:
@@ -60,14 +75,19 @@ optim:
   betas: [0.9, 0.999]
   eps: 1.0e-8
   epochs: 20
-  batch_size: 32
+  batch_size: 4
+  accumulation_steps: 4
   grad_clip: 1.0
-  scheduler: cosine
-  warmup_epochs: 2
+  scheduler: none
+  warmup_epochs: 0
+  early_stopping_patience: 5
 
 metrics:
   primary: mse
-  report: [mse, mae, rmse, mape]
+  report: [mse, mae, rmse]
+  scale: normalized
+  null_value: null
 
 eval:
   checkpoint: null
+  run_test_after_training: true

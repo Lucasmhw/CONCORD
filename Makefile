@@ -1,4 +1,4 @@
-.PHONY: preprocess train-long-term train-pems train-imputation evaluate test
+.PHONY: preprocess train-long-term train-pems train-imputation figures evaluate test
 
 preprocess:
 	bash scripts/preprocess_all.sh
@@ -11,6 +11,9 @@ train-pems:
 
 train-imputation:
 	bash scripts/train_imputation.sh
+
+figures:
+	bash scripts/reproduce_manuscript_figures.sh
 
 evaluate:
 	bash scripts/evaluate.sh

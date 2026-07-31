@@ -24,7 +24,8 @@ def load_config(path: str | Path) -> dict[str, Any]:
     include = cfg.pop("include", None)
     if include is None:
         return cfg
-    base_path = path.parent / Path(include).name if not str(include).startswith("/") else Path(include)
+    include_path = Path(include)
+    base_path = include_path if include_path.is_absolute() else path.parent / include_path.name
     if not base_path.exists():
         base_path = path.parent / include
     base = load_config(base_path)
@@ -33,6 +34,8 @@ def load_config(path: str | Path) -> dict[str, Any]:
 
 def _coerce_scalar(value: str) -> Any:
     low = value.lower()
+    if low in {"none", "null"}:
+        return None
     if low in {"true", "false"}:
         return low == "true"
     try:

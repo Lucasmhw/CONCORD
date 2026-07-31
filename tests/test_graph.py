@@ -8,6 +8,9 @@ def test_graph_shapes() -> None:
     a, l = build_correlation_graph(x, topk=2)
     assert a.shape == (2, 4, 4)
     assert l.shape == (2, 4, 4)
+    assert torch.allclose(a, a.transpose(-1, -2), atol=1e-6)
+    assert torch.allclose(l, l.transpose(-1, -2), atol=1e-6)
+    assert torch.linalg.eigvalsh(l).min() >= -1e-5
 
 
 def test_graph_single_series_is_identity() -> None:

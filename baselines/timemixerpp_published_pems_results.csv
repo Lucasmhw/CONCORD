@@ -1,0 +1,14 @@
+model,mae,mape,rmse,value_type,source,source_table,source_url
+TimeMixer++,15.91,10.08,27.06,published point estimate,TimeMixer++ ICLR 2025 paper,Table 3,https://openreview.net/pdf?id=1CLzLXSFNn
+TimeMixer,17.41,10.59,28.01,published point estimate,TimeMixer++ ICLR 2025 paper,Table 3,https://openreview.net/pdf?id=1CLzLXSFNn
+iTransformer,19.87,12.55,31.29,published point estimate,TimeMixer++ ICLR 2025 paper,Table 3,https://openreview.net/pdf?id=1CLzLXSFNn
+TiDE,21.86,13.80,34.42,published point estimate,TimeMixer++ ICLR 2025 paper,Table 3,https://openreview.net/pdf?id=1CLzLXSFNn
+SCINet,19.12,12.24,30.12,published point estimate,TimeMixer++ ICLR 2025 paper,Table 3,https://openreview.net/pdf?id=1CLzLXSFNn
+Crossformer,19.03,12.22,30.17,published point estimate,TimeMixer++ ICLR 2025 paper,Table 3,https://openreview.net/pdf?id=1CLzLXSFNn
+PatchTST,23.01,14.95,36.05,published point estimate,TimeMixer++ ICLR 2025 paper,Table 3,https://openreview.net/pdf?id=1CLzLXSFNn
+TimesNet,20.54,12.69,33.25,published point estimate,TimeMixer++ ICLR 2025 paper,Table 3,https://openreview.net/pdf?id=1CLzLXSFNn
+MICN,19.34,12.38,30.40,published point estimate,TimeMixer++ ICLR 2025 paper,Table 3,https://openreview.net/pdf?id=1CLzLXSFNn
+DLinear,23.31,14.68,37.32,published point estimate,TimeMixer++ ICLR 2025 paper,Table 3,https://openreview.net/pdf?id=1CLzLXSFNn
+FEDformer,23.50,15.01,36.78,published point estimate,TimeMixer++ ICLR 2025 paper,Table 3,https://openreview.net/pdf?id=1CLzLXSFNn
+Stationary,21.32,14.09,36.20,published point estimate,TimeMixer++ ICLR 2025 paper,Table 3,https://openreview.net/pdf?id=1CLzLXSFNn
+Autoformer,22.62,14.89,34.49,published point estimate,TimeMixer++ ICLR 2025 paper,Table 3,https://openreview.net/pdf?id=1CLzLXSFNn

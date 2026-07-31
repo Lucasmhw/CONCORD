@@ -3,16 +3,34 @@ include: configs/base.yaml
 data:
   dataset_name: pems
   raw_path: data/raw/pems/PEMS04.npz
-  processed_dir: data/processed/pems04
+  processed_dir: data/processed/PEMS04
+  date_column: null
+  expected_channels: 307
   task: forecasting
-  lookback: 336
+  lookback: 96
   horizon: 12
   stride: 1
+  train_stride: 1
+  val_stride: 1
+  test_stride: 12
+  split:
+    train: 0.6
+    val: 0.2
+    test: 0.2
+
+model:
+  scales: [12, 24, 48]
+  corr_window: 96
+  max_lookback: 96
 
 optim:
-  epochs: 25
-  batch_size: 16
+  epochs: 30
+  batch_size: 2
+  accumulation_steps: 16
+  early_stopping_patience: 5
 
 metrics:
   primary: rmse
   report: [mae, mape, rmse]
+  scale: original
+  null_value: 0.0

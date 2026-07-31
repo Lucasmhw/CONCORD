@@ -6,7 +6,9 @@ __pycache__/
 .venv/
 *.egg-info/
 data/processed/
+data/raw/
 runs/
+external/
 tmp_proc/
 tmp_proc2/
 tmp_runs/

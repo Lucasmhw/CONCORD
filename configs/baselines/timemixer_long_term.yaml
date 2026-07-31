@@ -1,34 +1,40 @@
 baseline:
-  name: iTransformer
-  repo_dir: external/iTransformer
-  revision: c2426e68ca13f74aaec08045c5c724d8ad328124
+  name: TimeMixer
+  repo_dir: external/TimeMixer
+  revision: e24610583b36fdd8c76cc17a8df4e65759a5f460
   entrypoint: run.py
   python: python
 
 output_dir: runs/baselines
 
 arguments:
+  task_name: long_term_forecast
   is_training: 1
   model_id: "{experiment}_336_{pred_len}"
-  model: iTransformer
+  model: TimeMixer
   data: custom
   root_path: ../../data/raw/electricity
   data_path: electricity.csv
   features: M
   seq_len: 336
-  label_len: 48
+  label_len: 0
   pred_len: 96
+  factor: 3
+  e_layers: 3
+  d_layers: 1
   enc_in: 321
   dec_in: 321
   c_out: 321
-  e_layers: 3
-  d_model: 512
-  d_ff: 512
+  d_model: 16
+  d_ff: 32
   dropout: 0.1
-  train_epochs: 10
-  batch_size: 16
-  learning_rate: 0.0005
-  patience: 3
+  down_sampling_layers: 3
+  down_sampling_method: avg
+  down_sampling_window: 2
+  train_epochs: 20
+  batch_size: 32
+  learning_rate: 0.01
+  patience: 10
   des: CONCORD_matched
   itr: 3
 
