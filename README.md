@@ -2,7 +2,7 @@
 
 Modular PyTorch reference implementation of CONCORD, a concept-oriented,
 graph-coupled dynamical model for multivariate time-series forecasting and causal
-imputation.
+imputation. 
 
 ## What Is Implemented
 
