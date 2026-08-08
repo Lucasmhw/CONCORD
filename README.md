@@ -70,7 +70,7 @@ On Windows PowerShell, activate the environment with:
 ```
 
 The audited GPU runs used Python 3.12.3, PyTorch 2.8.0+cu128, CUDA 12.8,
-cuDNN 9.1, and an NVIDIA RTX 5090 with 32 GB memory. Recreate the direct package
+cuDNN 9.1, and two NVIDIA RTX 5090 with 32 GB memory. Recreate the direct package
 versions with:
 
 ```bash
