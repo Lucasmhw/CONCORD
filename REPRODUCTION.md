@@ -89,7 +89,17 @@ comparison.
 
 - Treat `baselines/timemixerpp_published_results.csv` as a transcription of
   published point estimates, not local output.
-- Cite TimeMixer++ ICLR 2025 Table 1 for every long-term baseline row.
+- Distinguish the author-confirmed baseline reruns (seeds 7/50/81) from the
+  TimeMixer++ source-table transcriptions. Cite the latter only for the public
+  reference values, including Appendix A's baseline horizon entries.
+- Consult `baselines/provenance/README.md` and `baseline_protocols.json` for all
+  20 methods, frozen upstream source evidence, and the actual/default seed
+  distinction. Audited upstream commits are not automatically the author-run
+  implementation commits.
+- Do not equate a one-time seed followed by `itr=3` with three explicitly seeded
+  runs. The two optional wrappers retain the former upstream behavior.
+- Compare run SDs only at compatible metric/aggregation levels. Do not average
+  marginal SDs to obtain an aggregate SD, or relabel a standard error as an SD.
 - Do not attach invented standard deviations to published point estimates.
 - Keep optional TimeMixer and iTransformer reruns separate from TimeMixer++.
 - Do not label the published non-causal random-mask imputation values as

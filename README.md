@@ -293,13 +293,17 @@ node radar fingerprints. Figure 3 contains permutation degradation, a two-concep
 kNN error surface, and ridge slices. Figure 4 contains Electricity/Weather
 time-domain examples and six frequency-domain panels.
 
-## Published Baselines
+## Baseline results and provenance
 
-The baseline numbers cited in the unified comparison are published point estimates
-transcribed from Tables 1, 3, and 4 of the
-[TimeMixer++ ICLR 2025 paper](https://openreview.net/pdf?id=1CLzLXSFNn).
-They were not produced by this repository. The complete machine-readable
-transcription and source fields are in:
+The manuscript's baseline results were rerun and checked by the authors using
+seeds **7, 50, 81**. The [baseline audit](baselines/provenance/README.md) covers all
+20 named methods, with original-paper links, frozen official source commits,
+seed-setting evidence, and standard-deviation comparability. The corresponding
+[JSON manifest](baselines/provenance/baseline_protocols.json) is machine-readable.
+This documentation update does not change benchmark values or independently
+rerun the full benchmark.
+
+Separate TimeMixer++ transcriptions provide public reference means:
 
 ```text
 baselines/timemixerpp_published_results.csv
@@ -307,17 +311,16 @@ baselines/timemixerpp_published_pems_results.csv
 baselines/timemixerpp_published_imputation_results.csv
 ```
 
-The source table does not report a standard deviation for every baseline entry.
-Accordingly, these published values must not be presented as local repeated-run
-means or assigned an unsupported standard deviation.
+These public references are not the run archive for the author experiments.
+Their seed identifiers, uncertainty coverage and information sets must not be
+inferred from our reruns, or vice versa. In particular, source imputation results
+may use non-causal reconstruction, while the released CONCORD workflow is causal.
 
-The published imputation table uses standard random-mask reconstruction, while this
-repository's CONCORD imputation workflow is strictly causal. Its Table 4 values are
-retained for provenance but are not labeled as matched-protocol causal reruns.
+The paper-linked TimeMixer snapshot contains no separately identifiable
+TimeMixer++ implementation. Its source-table results can be independently
+cross-checked, but a TimeMixer run must not be relabelled as TimeMixer++.
 
-TimeMixer++ has no public implementation linked by that paper. Optional,
-version-pinned matched-protocol checks are provided for the distinct public
-TimeMixer and iTransformer implementations:
+Optional version-pinned TimeMixer and iTransformer wrappers remain available:
 
 ```bash
 bash scripts/clone_baselines.sh
@@ -327,8 +330,9 @@ python scripts/run_baseline.py \
   --config configs/baselines/itransformer_long_term.yaml --dry-run
 ```
 
-See `baselines/README.md` for the provenance boundary between published values and
-optional local reruns.
+They request `itr=3` from upstream code seeded once to 2021/2023, respectively;
+they do not implement the manuscript's 7/50/81 author-run protocol. See
+[baselines/README.md](baselines/README.md) for these separate provenance classes.
 
 
 ## Leakage Controls
