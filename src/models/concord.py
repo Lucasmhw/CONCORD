@@ -38,7 +38,7 @@ class ForwardOutput:
 
 
 class CONCORDModel(nn.Module):
-    """Manuscript-aligned horizon-conditioned CONCORD implementation."""
+    """Joint concept/observation recursion with horizon-conditioned readouts."""
 
     def __init__(self, cfg: dict[str, Any]) -> None:
         super().__init__()
@@ -53,17 +53,27 @@ class CONCORDModel(nn.Module):
         corr_window = mcfg.get("corr_window")
         self.corr_window = None if corr_window in {None, "null"} else int(corr_window)
         self.use_graph = bool(mcfg.get("use_graph", True))
-        self.rollout_mode = str(mcfg.get("rollout_mode", "specialized"))
+        self.rollout_mode = str(mcfg.get("rollout_mode", "recursive"))
+        if self.rollout_mode not in {"recursive", "specialized", "latent"}:
+            raise ValueError(f"Unsupported rollout_mode: {self.rollout_mode}")
         self.max_horizon = int(mcfg.get("max_horizon", 720))
 
         d_model = int(mcfg["d_model"])
-        num_knots = int(mcfg.get("num_knots", mcfg.get("num_basis", 9)))
+        if "num_knots" in mcfg:
+            raise ValueError("Legacy hat-basis num_knots is not a B-spline grid_size; use the updated configuration")
+        grid_size = int(mcfg.get("grid_size", 15))
+        spline_degree = int(mcfg.get("spline_degree", 3))
+        if int(mcfg.get("num_basis", grid_size + spline_degree)) != grid_size + spline_degree:
+            raise ValueError("num_basis must equal grid_size + spline_degree")
         grid_min = float(mcfg.get("grid_min", -1.0))
         grid_max = float(mcfg.get("grid_max", 1.0))
         dropout = float(mcfg["dropout"])
         use_kan = bool(mcfg.get("use_kan", True))
         common = {
-            "num_knots": num_knots,
+            "grid_size": grid_size,
+            "spline_degree": spline_degree,
+            "grid_eps": float(mcfg.get("grid_eps", 0.02)),
+            "grid_margin": float(mcfg.get("grid_margin", 0.01)),
             "grid_min": grid_min,
             "grid_max": grid_max,
             "dropout": dropout,
@@ -75,7 +85,10 @@ class CONCORDModel(nn.Module):
             num_heads=int(mcfg.get("num_heads", 4)),
             num_layers=int(mcfg.get("num_layers", 3)),
             d_ff=int(mcfg.get("d_ff", 128)),
-            num_knots=num_knots,
+            grid_size=grid_size,
+            spline_degree=spline_degree,
+            grid_eps=float(mcfg.get("grid_eps", 0.02)),
+            grid_margin=float(mcfg.get("grid_margin", 0.01)),
             grid_min=grid_min,
             grid_max=grid_max,
             dropout=dropout,
@@ -121,6 +134,7 @@ class CONCORDModel(nn.Module):
         final_layer = self.innov_head.net[-1]
         if isinstance(final_layer, KANLinear):
             nn.init.normal_(final_layer.coeff, mean=0.0, std=1e-3)
+            nn.init.normal_(final_layer.base_weight, mean=0.0, std=1e-3)
             if final_layer.bias is not None:
                 nn.init.zeros_(final_layer.bias)
         elif isinstance(final_layer, nn.Linear):

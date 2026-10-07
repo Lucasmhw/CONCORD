@@ -49,13 +49,19 @@ model:
   max_lookback: 1024
   series_chunk_size: 256
   norm_style: pre
-  num_knots: 9
+  grid_size: 15
+  spline_degree: 3
+  num_basis: 18
+  grid_eps: 0.02
+  grid_margin: 0.01
+  grid_update_every: 5
+  grid_refit_chunk_size: 8192
   grid_min: -1.0
   grid_max: 1.0
   use_multiscale: true
   use_graph: true
   use_kan: true
-  rollout_mode: specialized
+  rollout_mode: recursive
 
 loss:
   lambda_con: 0.1

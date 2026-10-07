@@ -25,13 +25,21 @@ comparison.
 - Shared series-local causal KAN-Transformer encoder.
 - Three pre-norm layers, four heads, width 64, feed-forward width 128.
 - Five concepts at scales `[48, 96, 192]` for LTSF.
-- Nine fixed triangular spline knots on `[-1, 1]`.
+- Cubic B-splines: `grid_size=15`, `spline_degree=3`, `num_basis=18`.
+- Initial core grid `[-1,1]`, extended by three intervals per side (22 knots).
+- Learned input affine scale/shift; SiLU and spline branches with learned scales.
+- No clamping; spline support ends at the outermost extended knots.
+- Full-training-set calibration after epochs 5, 10, ...; no validation/test input.
+- Quantile/uniform mixture `grid_eps=0.02`, uniform range margin `0.01`.
+- Refit spline coefficients using all captured inputs; save updated knots.
 - Symmetric normalized top-K absolute-correlation graph.
 - Six neighbors and a correlation window equal to the lookback.
 - Thirty-two-dimensional lead-time embedding.
 - KAN forcing, equilibrium, and innovation heads.
 - Positive learnable damping and graph-coupling scalars.
-- Specialized graph-refined concept state for reported runs.
+- Recursive concept and observation updates for reported runs.
+- Both next states use the current state; concept messages are recomputed each step.
+- Retain constant-concept `specialized` only as an explicitly selected alternative.
 
 ## 4. Objective
 
@@ -106,6 +114,7 @@ comparison.
 - Objective: `src/losses.py`
 - Splits/scaling: `src/data/preprocess.py`
 - Training selection: `src/training/train.py`
+- Full-training-set grid calibration: `src/training/grid.py`
 - Metrics/imputation: `src/engine.py`
 - Figure definitions: `scripts/reproduce_figures.py`
 - Baseline provenance: `baselines/README.md`

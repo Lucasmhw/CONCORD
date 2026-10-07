@@ -19,12 +19,13 @@ def tiny_cfg() -> dict:
             "corr_window": 8,
             "kappa": 2.0,
             "use_graph": True,
-            "rollout_mode": "specialized",
+            "rollout_mode": "recursive",
             "d_model": 8,
             "num_heads": 2,
             "num_layers": 1,
             "d_ff": 16,
-            "num_knots": 5,
+            "grid_size": 5,
+            "spline_degree": 3,
             "grid_min": -1.0,
             "grid_max": 1.0,
             "dropout": 0.0,
@@ -64,10 +65,33 @@ def test_forward_shape_and_methods_readouts() -> None:
 
 
 def test_specialized_rollout_keeps_graph_refined_concept_state() -> None:
-    model = CONCORDModel(tiny_cfg())
+    cfg = tiny_cfg()
+    cfg["model"]["rollout_mode"] = "specialized"
+    model = CONCORDModel(cfg)
     out = model(torch.randn(1, 16, 2), horizon=4)
     for state in out.q_states[1:]:
         assert torch.equal(state, out.q0)
+
+
+def test_recursive_default_updates_concepts_and_changes_later_predictions() -> None:
+    torch.manual_seed(19)
+    cfg = tiny_cfg()
+    del cfg["model"]["rollout_mode"]
+    model = CONCORDModel(cfg).eval()
+    assert model.rollout_mode == "recursive"
+    history = torch.randn(2, 16, 3)
+    recursive = model(history, horizon=5)
+    assert all(not torch.equal(q, recursive.q0) for q in recursive.q_states[1:])
+    model.rollout_mode = "specialized"
+    retained = model(history, horizon=5)
+    # Both paths read Q(0) at the first step; only subsequent reads use Omega.
+    torch.testing.assert_close(recursive.pred[:, 0], retained.pred[:, 0])
+    assert not torch.allclose(recursive.pred[:, 1:], retained.pred[:, 1:])
+    recursive.pred[:, 1:].square().mean().backward()
+    omega_grads = [p.grad for p in model.omega.parameters() if p.grad is not None]
+    assert omega_grads
+    assert all(torch.isfinite(g).all() for g in omega_grads)
+    assert sum(float(g.abs().sum()) for g in omega_grads) > 0.0
 
 
 def test_step_embedding_uses_configured_initialization_scale() -> None:

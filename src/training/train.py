@@ -17,6 +17,7 @@ from concord.data.datasets import (
 )
 from concord.engine import run_epoch
 from concord.models.concord import CONCORDModel
+from concord.training.grid import grid_update_due, update_grids_from_training_set
 from concord.utils.checkpoint import load_checkpoint, save_checkpoint
 from concord.utils.environment import environment_metadata
 from concord.utils.logging import dump_json, ensure_dir
@@ -178,6 +179,12 @@ def train_main(cfg: dict[str, Any]) -> dict[str, Any]:
             scaler=scaler,
         )
         global_step = train_result.global_step
+        grid_record = None
+        if grid_update_due(epoch, cfg):
+            grid_record = update_grids_from_training_set(
+                model, train_loader, cfg, device, run_dir / "grid_scratch", optimizer,
+            )
+            dump_json(grid_record, run_dir / f"grid_update_{epoch:03d}.json")
         val_result = run_epoch(
             model,
             val_loader,
@@ -198,6 +205,7 @@ def train_main(cfg: dict[str, Any]) -> dict[str, Any]:
             "train_terms": train_result.loss_terms,
             "val_terms": val_result.loss_terms,
             "lr": optimizer.param_groups[0]["lr"],
+            "grid_update": grid_record,
         }
         dump_json(record, run_dir / f"epoch_{epoch:03d}.json")
 

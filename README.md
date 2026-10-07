@@ -15,12 +15,13 @@ infer five operational concepts at several temporal scales:
 4. first-harmonic amplitude;
 5. local volatility.
 
-A causal top-K correlation graph refines the inferred concept state. The default
-reported rollout retains this graph-refined state and uses a learned lead-time
-embedding to obtain horizon-specific KAN readouts:
+A causal top-K correlation graph refines the inferred concept state. The reported
+configuration uses `rollout_mode: recursive`: all concept coordinates are updated
+at each forecast step, and the current state plus a learned lead-time embedding
+provides the KAN readouts:
 
 ```text
-r_i(h)       = concat(q_i(0), step_embedding(h))
+r_i(h)       = concat(q_i(h), step_embedding(h))
 u_i(h)       = KAN_u(r_i(h))
 ell_i(h)     = KAN_ell(r_i(h))
 epsilon_i(h) = KAN_epsilon(r_i(h))
@@ -30,7 +31,48 @@ x_i(h+1)     = x_i(h) + delta * [
                  - mu * (L x(h))_i
                  + epsilon_i(h)
                ]
+q_i(h+1)     = q_i(h) + delta * KAN_omega(concat(
+                 q_i(h), x_i(h), sum_j A_ij * KAN_phi(q_j(h))
+               ))
 ```
+
+Both updates use the current `(q(h), x(h))`; the updated concepts enter the next
+step's readout. The graph stays fixed within a forecast, while its messages change
+with the concept states. `specialized` is an explicitly selected constant-concept
+alternative, and `latent` is a separate latent-update alternative.
+
+KAN edges use a learned affine input transform followed by
+`w_base * SiLU(z) + w_spline * sum_k coeff_k * B_k(z)`. The default cubic B-splines
+have 15 core intervals and 18 basis functions per input, initialized on `[-1,1]`
+with three extra knot intervals on each side (22 knots in total). Inputs are not
+clamped. Splines remain nonzero near the core boundary within their extended
+support and vanish beyond the outermost knots; the SiLU branch remains active.
+
+After every fifth epoch, a separate pass at fixed weights uses the **entire
+training dataset** to collect each active KAN layer's affine-transformed inputs,
+including all recursive calls. Dropout is disabled during calibration. For each
+input coordinate, the new core grid is 0.98 times its linearly interpolated
+empirical quantiles plus 0.02 times a uniform grid over the observed range with a
+0.01 margin. Three intervals are extended on each side. Streaming least squares
+refits the unscaled spline coefficients to their previous responses over every
+captured sample; learned spline scales are preserved. Regridding approximates the
+previous spline and does not guarantee exact preservation for arbitrary grids.
+
+Calibration writes disk-backed activation files under the run directory and
+removes them after use. It does not substitute a reservoir, one mini-batch, or
+validation/test inputs. Allow storage for all layer activations in this full-data
+pass. Refitted coefficient optimizer moments are reset; other optimizer states
+are preserved. `grid_update_005.json`, etc. record per-layer sample counts and
+refit errors. Validation and checkpoint selection follow calibration, and
+checkpoints save the learned knots as well as all parameters. Inference never
+updates grids. `model.grid_update_every=0` explicitly disables calibration for
+controlled ablations, rather than silently altering the reported default.
+
+This release aligns the repository with the authors' confirmed recursive,
+adaptive B-spline experiment configuration. The earlier fixed-hat,
+constant-concept public snapshot is not the implementation to attribute to those
+experiments. Existing checkpoints from that snapshot are incompatible with the
+new basis and branch parameters and must not be silently loaded as this model.
 
 `gamma` and `mu` are positive learnable scalars. The innovation is explicitly
 penalized. The residual weight is warmed up over optimizer steps. The causal

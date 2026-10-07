@@ -62,12 +62,15 @@ class KANTransformerLayer(nn.Module):
         d_model: int,
         num_heads: int,
         d_ff: int,
-        num_knots: int,
+        grid_size: int,
+        spline_degree: int,
         grid_min: float,
         grid_max: float,
         dropout: float,
         use_kan: bool,
         norm_style: str,
+        grid_eps: float = 0.02,
+        grid_margin: float = 0.01,
     ) -> None:
         super().__init__()
         if norm_style not in {"post", "pre"}:
@@ -79,7 +82,10 @@ class KANTransformerLayer(nn.Module):
         self.ffn = KANFeedForward(
             d_model=d_model,
             d_ff=d_ff,
-            num_knots=num_knots,
+            grid_size=grid_size,
+            spline_degree=spline_degree,
+            grid_eps=grid_eps,
+            grid_margin=grid_margin,
             grid_min=grid_min,
             grid_max=grid_max,
             dropout=dropout,
@@ -104,7 +110,8 @@ class SeriesLocalEncoder(nn.Module):
         num_heads: int,
         num_layers: int,
         d_ff: int,
-        num_knots: int,
+        grid_size: int,
+        spline_degree: int,
         grid_min: float,
         grid_max: float,
         dropout: float,
@@ -112,6 +119,8 @@ class SeriesLocalEncoder(nn.Module):
         max_len: int,
         series_chunk_size: int = 0,
         norm_style: str = "pre",
+        grid_eps: float = 0.02,
+        grid_margin: float = 0.01,
     ) -> None:
         super().__init__()
         self.input_projection = nn.Linear(1, d_model)
@@ -122,7 +131,10 @@ class SeriesLocalEncoder(nn.Module):
                     d_model=d_model,
                     num_heads=num_heads,
                     d_ff=d_ff,
-                    num_knots=num_knots,
+                    grid_size=grid_size,
+                    spline_degree=spline_degree,
+                    grid_eps=grid_eps,
+                    grid_margin=grid_margin,
                     grid_min=grid_min,
                     grid_max=grid_max,
                     dropout=dropout,
