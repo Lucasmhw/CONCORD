@@ -1,0 +1,64 @@
+CONCORD Noncommercial Research License 1.0
+
+1. Scope and ownership
+
+This license applies to the original CONCORD source code and documentation
+provided under it (the "Software"). Copyright and other intellectual-property
+rights remain with their respective holders. Third-party datasets, dependencies
+and other separately licensed materials are excluded and remain subject to
+their own terms. No ownership of those materials is transferred or claimed.
+
+2. Free noncommercial research permission
+
+Each rights holder offering the Software under this license grants you a
+worldwide, nonexclusive, royalty-free copyright license to use, run, copy,
+inspect, modify and redistribute the Software and modifications solely for
+noncommercial research, reproduction and evaluation. No individual permission
+request or payment is required for these permitted activities.
+
+Keep existing copyright, attribution and license notices. Include this license
+with redistributed copies, identify your modifications, and distribute the
+Software and modifications under these same terms. Publication of research
+findings is permitted, including in commercially published scholarly journals;
+such publication does not itself constitute commercial use of the Software.
+
+3. Commercial use requires a separate agreement
+
+The permission above does not cover activities undertaken for commercial
+advantage, including commercial deployment, commercial product or service
+development, commercial research and development, paid services using the
+Software, or using the Software to train models intended for commercial use.
+An academic or nonprofit affiliation does not by itself make such activities
+noncommercial.
+
+Before undertaking commercial use, obtain a separate written agreement from
+the relevant rights holder or an authorized representative. Any fees or
+royalties must be negotiated and specified in that agreement; this license
+does not impose an automatic fee or royalty obligation. Commercial licensing
+enquiries may be directed to hongwei.ma@sydney.edu.au.
+
+4. Patent rights
+
+If a rights holder offering the Software under this license controls patent
+claims necessarily practiced by a permitted noncommercial use of the Software,
+that holder grants a nonexclusive, royalty-free permission under those claims
+only for that permitted use and only to the extent the holder is authorized
+to do so. All other patent rights, if any, are reserved. No commercial patent
+license is granted. Nothing here asserts that a patent exists or guarantees
+that the Software is free of third-party patent rights.
+
+5. Other rights and compliance
+
+The permissions granted here depend on compliance with these terms. Uses
+outside their scope require another applicable permission. Nothing in this
+license restricts rights available independently under applicable law or
+rights separately granted by applicable repository-hosting or archival-
+platform terms. No trademark or endorsement permission is granted.
+
+6. Warranty and liability
+
+To the extent permitted by law, the Software is provided without warranties,
+including warranties of fitness, quality or noninfringement. The rights
+holders and contributors are not liable for losses or damages arising from
+use of the Software. This provision does not exclude liability that cannot
+lawfully be excluded.

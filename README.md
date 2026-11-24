@@ -348,3 +348,28 @@ they do not implement the manuscript's 7/50/81 author-run protocol. See
   hash is retained with every run.
 
 See `REPRODUCTION.md` for the complete reviewer-facing checklist and audit paths.
+
+## Citation and licensing
+
+Version 0.1.0 has the permanent identifier
+[10.5281/zenodo.24504658](https://doi.org/10.5281/zenodo.24504658).
+Citation metadata are provided in [CITATION.cff](CITATION.cff).
+
+Original CONCORD code and documentation are available under the
+[CONCORD Noncommercial Research License 1.0](LICENSE). Noncommercial research,
+reproduction and evaluation are free and do not require an individual permission
+request, subject to the license terms. Commercial use requires a separate written
+agreement with the relevant rights holder or an authorized representative;
+any fees or royalties are negotiated separately. Licensing enquiries:
+hongwei.ma@sydney.edu.au.
+
+Copyright and patent ownership remain with the respective rights holders.
+Any patent permission under this license is limited to the permitted
+noncommercial use; no commercial patent license is granted. Third-party
+datasets, dependencies and separately licensed materials retain their own terms.
+This is a source-available research license, not an OSI-approved open-source license.
+
+The archived version preserves the model and experiment files at
+`6e79895c3cb93c307883835dd786c7abba967683` and the baseline-provenance documentation
+at `6630366992cea1168f437f0fcdb2280bdd020456`. Release preparation adds only
+licensing, citation and archival documentation. See [ARCHIVE.md](ARCHIVE.md).

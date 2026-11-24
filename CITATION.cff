@@ -1,0 +1,36 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata in this file."
+type: software
+title: "CONCORD: Concept-Oriented Graph-Coupled Dynamics for Forecasting"
+authors:
+  - family-names: Ma
+    given-names: Hongwei
+    affiliation: The University of Sydney
+  - family-names: Gao
+    given-names: Junbin
+    affiliation: The University of Sydney
+  - family-names: Shi
+    given-names: Dai
+    affiliation: The University of Cambridge
+  - family-names: Tran
+    given-names: Minh-Ngoc
+    affiliation: The University of Sydney
+version: 0.1.0
+date-released: "2026-11-24"
+doi: 10.5281/zenodo.24504658
+license-url: https://github.com/Lucasmhw/CONCORD/blob/v0.1.0/LICENSE
+repository-code: https://github.com/Lucasmhw/CONCORD
+abstract: >-
+  Reference implementation of CONCORD, a concept-oriented graph-coupled
+  framework for multivariate time-series forecasting and causal imputation.
+  The default model recursively evolves operational temporal descriptors and
+  observations using graph coupling and adaptive cubic B-spline
+  Kolmogorov-Arnold networks. The repository includes model and preprocessing
+  modules, task configurations, training and evaluation scripts, tests, and
+  baseline source and random-seed documentation.
+keywords:
+  - multivariate time-series forecasting
+  - concept-oriented modelling
+  - graph-coupled dynamics
+  - Kolmogorov-Arnold networks
+  - causal imputation
